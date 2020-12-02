@@ -49,13 +49,24 @@ func main() {
     }
     print("[INFO] Successfully connected to \(ssid)")
 
-    guard let index_contents = try? Data(contentsOf: URL(string: "http://192.168.0.1/data.json")!),
-          let parsed_index = try? JSONSerialization.jsonObject(with: index_contents),
-          let parsed_dict = parsed_index as? [String: Any],
+    let index_contents = Result {
+        try Data(contentsOf: URL(string: "http://192.168.0.1/data.json")!)
+    }
+    let parsed_index = index_contents.flatMap { contents in
+        Result { try JSONSerialization.jsonObject(with: contents) }
+    }
+
+    if case let .failure(error) = parsed_index {
+        print("[ERROR] Failed to download index file from switch: \(error)")
+        interface.disassociate()
+        exit(1)
+    }
+
+    guard let parsed_dict = try! parsed_index.get() as? [String: Any],
           let console_name = parsed_dict["ConsoleName"] as? String,
           let filenames = parsed_dict["FileNames"] as? [String]
     else {
-        print("[ERROR] Failed to download index file from switch")
+        print("[ERROR] Failed to parse index file from switch: \(parsed_index)")
         interface.disassociate()
         exit(1)
     }
