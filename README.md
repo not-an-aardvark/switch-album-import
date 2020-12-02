@@ -9,7 +9,7 @@ It would also be possible to create a platform-independent tool where the user m
 ## Installation
 
 1. Clone the repository on macOS
-1. Run `make all` to generate a binary in `bin/switch-album-import` (or `make install` to also symlink the binary into `/usr/local/bin/`.).
+1. Run `make all` to generate a binary in `bin/switch-album-import` (or `make install` to also symlink the binary into `/usr/local/bin/`).
 
 There are probably some build dependencies omitted here. Unfortunately, at this time I'm not familiar enough with Swift builds to determine what those dependencies are, other than "it seems to work out-of-the-box on my laptop" and "maybe try the XCode Command Line tools". Feel free to send a PR updating this section if you figure anything out.
 
