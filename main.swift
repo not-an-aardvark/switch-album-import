@@ -1,6 +1,32 @@
 import CoreWLAN
 import Foundation
 
+enum SwitchImportError: Error {
+    case INTERNAL_ASSERTION_FAILURE
+    case NO_WIFI_INTERFACE
+    case HOTSPOT_NOT_FOUND(String)
+    case MALFORMED_INDEX_FILE(Any)
+    case BAD_FILENAME_FROM_SWITCH(String)
+}
+
+extension URLSession {
+    func synchronousFetch(url: URL) throws -> Data {
+        var result: Result<Data, Error> = .failure(SwitchImportError.INTERNAL_ASSERTION_FAILURE)
+        let semaphore = DispatchSemaphore(value: 0)
+        let task = dataTask(with: url) { data, _, error in
+            if let data = data {
+                result = .success(data)
+            } else {
+                result = .failure(error!)
+            }
+            semaphore.signal()
+        }
+        task.resume()
+        semaphore.wait()
+        return try result.get()
+    }
+}
+
 private func printUsage() {
     print("""
     Usage: switch-album-import -h|-help|--help
@@ -8,7 +34,7 @@ private func printUsage() {
     """)
 }
 
-func main() {
+func main() -> Int32 {
     let args = Array(CommandLine.arguments.dropFirst())
     if (args.contains { arg in arg == "-h" || arg == "-help" || arg == "--help" }) {
         printUsage()
@@ -22,98 +48,62 @@ func main() {
           let output_dir = defaults.string(forKey: "output_dir")
     else {
         printUsage()
-        exit(1)
+        return 1
     }
 
     var output_dir_is_directory: ObjCBool = true
     if !FileManager.default.fileExists(atPath: output_dir, isDirectory: &output_dir_is_directory) {
         print("[ERROR] No such directory: \(output_dir)")
-        exit(1)
-    }
-
-    print("[INFO] Connecting to \(ssid)...")
-
-    let client = CWWiFiClient.shared()
-
-    guard let interface = client.interface(), let switch_hotspot = (try? interface.scanForNetworks(withName: ssid))?.first else {
-        print("[ERROR] Failed to find switch hotspot at \(ssid)")
-        exit(1)
+        return 1
     }
 
     do {
-        try interface.associate(to: switch_hotspot, password: password)
-    } catch {
-        print("[ERROR] Failed to connect to switch hotspot at \(ssid)")
-        interface.disassociate()
-        exit(1)
-    }
-    print("[INFO] Successfully connected to \(ssid)")
+        guard let interface = CWWiFiClient.shared().interface() else {
+            throw SwitchImportError.NO_WIFI_INTERFACE
+        }
+        let matching_networks = try interface.scanForNetworks(withName: ssid)
+        if matching_networks.count == 0 {
+            throw SwitchImportError.HOTSPOT_NOT_FOUND(ssid)
+        }
 
-    let index_contents = Result {
-        try Data(contentsOf: URL(string: "http://192.168.0.1/data.json")!)
-    }
-    let parsed_index = index_contents.flatMap { contents in
-        Result { try JSONSerialization.jsonObject(with: contents) }
-    }
-
-    if case let .failure(error) = parsed_index {
-        print("[ERROR] Failed to download index file from switch: \(error)")
-        interface.disassociate()
-        exit(1)
-    }
-
-    guard let parsed_dict = try! parsed_index.get() as? [String: Any],
-          let console_name = parsed_dict["ConsoleName"] as? String,
-          let filenames = parsed_dict["FileNames"] as? [String]
-    else {
-        print("[ERROR] Failed to parse index file from switch: \(parsed_index)")
-        interface.disassociate()
-        exit(1)
-    }
-
-    print("[INFO] Downloading \(filenames.count) file(s) from \(console_name)...")
-    let semaphore = DispatchSemaphore(value: 0)
-    for filename in filenames {
-        // Sanity check to ensure filenames are reasonable and don't contain e.g. path components
-        if filename.range(of: #"^\w[\w.-]+$"#, options: .regularExpression) == nil {
-            print("Unexpected filename: \(filename)")
+        print("[INFO] Connecting to \(ssid)...")
+        try interface.associate(to: matching_networks.first!, password: password)
+        defer {
+            // Disconnect from the Switch hotspot.
+            // It doesn't seem to be possible to reconnect back to the previous network here. However,
+            // the OS should do it automatically since it won't be connected to any networks at this
+            // point. Note that the OS might try to reconnect to the Switch hotspot instead; to prevent
+            // this, the Switch's SSID should be configured to *not* auto-join in System Preferences.
             interface.disassociate()
-            exit(1)
         }
 
-        let url = URL(string: "http://192.168.0.1/img/\(filename)")!
-        print("[INFO] Downloading \(filename)...")
-        let task = URLSession.shared.dataTask(with: url) { data, _, error in
-
-            guard let data = data else {
-                print("[ERROR] Failed to download \(url): \(String(describing: error))")
-                interface.disassociate()
-                exit(1)
+        let index_contents = try URLSession.shared.synchronousFetch(url: URL(string: "http://192.168.0.1/data.json")!)
+        let parsed_index = try JSONSerialization.jsonObject(with: index_contents)
+        guard let parsed_dict = parsed_index as? [String: Any],
+              let console_name = parsed_dict["ConsoleName"] as? String,
+              let filenames = parsed_dict["FileNames"] as? [String]
+        else {
+            throw SwitchImportError.MALFORMED_INDEX_FILE(parsed_index)
+        }
+        print("[INFO] Downloading \(filenames.count) file(s) from \(console_name)...")
+        for filename in filenames {
+            // Sanity check to ensure filenames are reasonable and don't contain e.g. path components
+            if filename.range(of: #"^\w[\w.-]+$"#, options: .regularExpression) == nil {
+                throw SwitchImportError.BAD_FILENAME_FROM_SWITCH(filename)
             }
+
+            print("[INFO] Downloading \(filename)...")
+            let url = URL(string: "http://192.168.0.1/img/\(filename)")!
+            let data = try URLSession.shared.synchronousFetch(url: url)
             let file_url = URL(fileURLWithPath: output_dir).appendingPathComponent(filename)
-            do {
-                try data.write(to: file_url)
-            } catch {
-                print("[ERROR] Failed to write to \(file_url)")
-                interface.disassociate()
-                exit(1)
-            }
-            semaphore.signal()
+            try data.write(to: file_url)
         }
-        task.resume()
+        print("[INFO] Successfully downloaded \(filenames.count) file(s) from \(console_name)")
+    } catch {
+        print("[ERROR] \(error)")
+        return 1
     }
-    for _ in filenames {
-        semaphore.wait()
-    }
-    print("[INFO] Successfully downloaded \(filenames.count) file(s) from \(console_name)")
-
-    // Disconnect from the Switch hotspot.
-    // It doesn't seem to be possible to reconnect back to the previous network here. However,
-    // the OS should do it automatically since it won't be connected to any networks at this
-    // point. Note that the OS might try to reconnect to the Switch hotspot instead; to prevent
-    // this, the Switch's SSID should be configured to *not* auto-join in System Preferences.
-    interface.disassociate()
-    print("[INFO] Disconnected from \(ssid)")
+    return 0
 }
 
-main()
+exit(main())
