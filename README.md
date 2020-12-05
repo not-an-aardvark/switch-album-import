@@ -36,7 +36,7 @@ The Switch's export protocol works by setting up a wifi hotspot and serving the 
 ```ts
 {
   ConsoleName: string, // The "Console Nickname" in System Settings
-  FileType: "photo" | "video",
+  FileType: "photo" | "movie",
   FileNames: string[], // The names of the files being exported
 
   DownloadMes: string, // Human-readable page title
