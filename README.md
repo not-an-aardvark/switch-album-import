@@ -1,6 +1,6 @@
 # switch-album-import
 
-This is a tool for importing screenshots and videos from the Nintendo Switch album. It's effectively a command-line client for the "Send to Smartphone" feature introduced in Switch firmware version 11.0.0 (released 2020-11-30). The goal is that importing images onto a computer with a command-line script might be more convenient for repeated use than the recommended UX, which involves scanning two separate QR codes and manually downloading images using a smartphone browser.
+This is a tool for importing screenshots and videos from the Nintendo Switch album. It's a command-line client for the "Send to Smartphone" feature introduced in Switch firmware version 11.0.0 (released 2020-11-30). The idea is that a command-line script might be convenient than the recommended UX, which involves scanning two separate QR codes and manually downloading images using a smartphone browser.
 
 Currently, only macOS is supported. Since the Switch's export protocol requires connecting to a local wifi hotspot, tools that connect automatically by modifying your wifi settings will inherently be a bit OS-specific.
 
@@ -19,10 +19,10 @@ Alternatively, you can try downloading a precompiled binary from the [releases p
 
 1. Install on a macOS device that's physically close to the Switch device.
 1. On the Switch, go to the Album, and open a screenshot or video that you want to export. Navigate to "Sharing and Editing", then "Send to Smartphone". You can also export a batch of screenshots rather than getting them one at a time.
-1. The Switch will display a QR code. Ignore it and tap the "+" button to open the "Trouble connecting?" menu. It will display an SSID and a password.
+1. The Switch will display a QR code. Ignore it and press the "+" button to open the "Trouble connecting?" menu. It will display an SSID and a password.
 1. Run this tool with `switch-album-import -ssid <the ssid> -password <the password> -output_dir <directory where files should be downloaded>`
 1. The files should appear in the specified folder. You can now exit the Switch UI.
-1. **Recommended:** After running this the first time, go to Network Preferences > Advanced, and uncheck "Auto-join" for the Switch's SSID in the list. The tool will auto-disconnect from the Switch hotspot before it exits, but this step will prevent your computer from automatically reconnecting to the Switch hotspot afterwards, so that it reconnects to your real wifi network instead. This setting only needs to be set once for each Switch that you import from.
+1. **Recommended:** After running this the first time, go to Network Preferences > Advanced, and uncheck "Auto-join" for the Switch's SSID in the list. This should smooth out the process of reconnecting to your wifi network after running the script, and only needs to be done once for each Switch that you import from. (The tool auto-disconnects from the Switch hotspot before it exits, but this step prevents your computer from automatically reconnecting to the Switch hotspot afterwards, so that it reconnects to your real wifi network instead.)
 
 ## Protocol
 
