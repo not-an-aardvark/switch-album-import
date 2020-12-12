@@ -77,7 +77,11 @@ func main() -> Int32 {
             interface.disassociate()
         }
 
-        let index_contents = try URLSession.shared.synchronousFetch(url: URL(string: "http://192.168.0.1/data.json")!)
+        let session_config = URLSessionConfiguration.ephemeral
+        session_config.waitsForConnectivity = true
+        let url_session = URLSession(configuration: session_config)
+
+        let index_contents = try url_session.synchronousFetch(url: URL(string: "http://192.168.0.1/data.json")!)
         let parsed_index = try JSONSerialization.jsonObject(with: index_contents)
         guard let parsed_dict = parsed_index as? [String: Any],
               let console_name = parsed_dict["ConsoleName"] as? String,
@@ -94,7 +98,7 @@ func main() -> Int32 {
 
             print("[INFO] Downloading \(filename)...")
             let url = URL(string: "http://192.168.0.1/img/\(filename)")!
-            let data = try URLSession.shared.synchronousFetch(url: url)
+            let data = try url_session.synchronousFetch(url: url)
             let file_url = URL(fileURLWithPath: output_dir).appendingPathComponent(filename)
             try data.write(to: file_url)
         }

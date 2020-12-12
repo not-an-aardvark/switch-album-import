@@ -6,7 +6,7 @@ all: bin/switch-album-import
 
 bin/switch-album-import: $(wildcard *.swift)
 	@mkdir -p $(@D)
-	xcrun -sdk macosx swiftc -target x86_64-apple-macosx10.10 $+ -O -o $@
+	xcrun -sdk macosx swiftc -target x86_64-apple-macosx10.13 $+ -O -o $@
 
 install: bin/switch-album-import
 	$(INSTALL) -b -v $< $(DESTDIR)$(bindir)
