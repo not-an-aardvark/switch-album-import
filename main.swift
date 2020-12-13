@@ -10,7 +10,7 @@ enum SwitchImportError: Error {
 }
 
 extension URLSession {
-    func synchronousFetch(url: URL) throws -> Data {
+    private func synchronousFetchWithoutRetry(url: URL) throws -> Data {
         var result: Result<Data, Error> = .failure(SwitchImportError.INTERNAL_ASSERTION_FAILURE)
         let semaphore = DispatchSemaphore(value: 0)
         let task = dataTask(with: url) { data, _, error in
@@ -24,6 +24,17 @@ extension URLSession {
         task.resume()
         semaphore.wait()
         return try result.get()
+    }
+
+    // Fetch the given URL, and retry exactly once if network connection is
+    // lost. This is a workaround for the Switch's DHCP lease bug described in
+    // the readme.
+    func synchronousFetch(url: URL) throws -> Data {
+        do {
+            return try synchronousFetchWithoutRetry(url: url)
+        } catch let err as NSError where err.domain == NSURLErrorDomain && err.code == NSURLErrorNetworkConnectionLost {
+            return try synchronousFetchWithoutRetry(url: url)
+        }
     }
 }
 
