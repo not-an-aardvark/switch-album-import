@@ -46,3 +46,16 @@ The Switch's export protocol works by setting up a wifi hotspot and serving the 
 ```
 
 All of the files specified in `FileNames` are served from the Switch at `http://192.168.0.1/img/<filename>`.
+
+### Additional protocol quirks
+
+The following is based on observed behavior, with the goal of saving debugging time for anyone else who implements a client.
+
+* The hotspot created by the Switch can connect to exactly one DHCP client at a time, and the HTTP server can handle exactly one request at a time.
+* The Switch hotspot appears to have a bug where it honors DHCP leases from previous hotspot instances (possibly due to a stale ARP cache), but refuses to renew those leases.
+
+    When reconnecting to a hotspot, macOS (along with some other operating systems) generally [attempts to reuse a previous DHCP lease it had from that hotspot, as a performance optimization](https://cafbit.com/post/rapid_dhcp_or_how_do/). This allows network traffic to start almost immediately. A few seconds later, macOS asynchronously renews the lease, expecting the renewal to succeed because the lease is still working.
+
+    When using a tool like this, it will often be the case that a client was recently connected to the Switch hotspot, and the Switch hotspot has since been rebooted (e.g. to export another video). In this case, the Switch will accept the new connection and start exchanging traffic, but then reject (i.e. DHCPNACK) the lease renewal a few seconds later, because it no longer remembers the old lease and hasn't offered a new one. The client will interpret this as a termination of the DHCP lease, and will proceed to drop TCP connections and return an application-level "network connection lost" error. This error is consistently reproducible provided that the lease termination happens during an HTTP request.
+
+    Afterwards, the client successfully recreates the lease from scratch and can renew it as needed, so the issue can be consistently worked around by retrying once.
