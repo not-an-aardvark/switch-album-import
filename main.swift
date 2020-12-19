@@ -2,16 +2,16 @@ import CoreWLAN
 import Foundation
 
 enum SwitchImportError: Error {
-    case INTERNAL_ASSERTION_FAILURE
-    case NO_WIFI_INTERFACE
-    case HOTSPOT_NOT_FOUND(String)
-    case MALFORMED_INDEX_FILE(Any)
-    case BAD_FILENAME_FROM_SWITCH(String)
+    case internalAssertionFailure
+    case noWifiInterface
+    case hotspotNotFound(String)
+    case malformedIndexFile(Any)
+    case badFilenameFromSwitch(String)
 }
 
 extension URLSession {
     private func synchronousFetchWithoutRetry(url: URL) throws -> Data {
-        var result: Result<Data, Error> = .failure(SwitchImportError.INTERNAL_ASSERTION_FAILURE)
+        var result: Result<Data, Error> = .failure(SwitchImportError.internalAssertionFailure)
         let semaphore = DispatchSemaphore(value: 0)
         let task = dataTask(with: url) { data, _, error in
             if let data = data {
@@ -56,29 +56,29 @@ func main() -> Int32 {
 
     guard let ssid = defaults.string(forKey: "ssid"),
           let password = defaults.string(forKey: "password"),
-          let output_dir = defaults.string(forKey: "output_dir")
+          let outputDir = defaults.string(forKey: "output_dir")
     else {
         printUsage()
         return 1
     }
 
-    var output_dir_is_directory: ObjCBool = true
-    if !FileManager.default.fileExists(atPath: output_dir, isDirectory: &output_dir_is_directory) {
-        print("[ERROR] No such directory: \(output_dir)")
+    var outputDirIsDirectory: ObjCBool = true
+    if !FileManager.default.fileExists(atPath: outputDir, isDirectory: &outputDirIsDirectory) {
+        print("[ERROR] No such directory: \(outputDir)")
         return 1
     }
 
     do {
         guard let interface = CWWiFiClient.shared().interface() else {
-            throw SwitchImportError.NO_WIFI_INTERFACE
+            throw SwitchImportError.noWifiInterface
         }
-        let matching_networks = try interface.scanForNetworks(withName: ssid)
-        if matching_networks.count == 0 {
-            throw SwitchImportError.HOTSPOT_NOT_FOUND(ssid)
+        let matchingNetworks = try interface.scanForNetworks(withName: ssid)
+        if matchingNetworks.count == 0 {
+            throw SwitchImportError.hotspotNotFound(ssid)
         }
 
         print("[INFO] Connecting to \(ssid)...")
-        try interface.associate(to: matching_networks.first!, password: password)
+        try interface.associate(to: matchingNetworks.first!, password: password)
         defer {
             // Disconnect from the Switch hotspot.
             // It doesn't seem to be possible to reconnect back to the previous network here. However,
@@ -88,31 +88,31 @@ func main() -> Int32 {
             interface.disassociate()
         }
 
-        let session_config = URLSessionConfiguration.ephemeral
-        session_config.waitsForConnectivity = true
-        let url_session = URLSession(configuration: session_config)
+        let sessionConfig = URLSessionConfiguration.ephemeral
+        sessionConfig.waitsForConnectivity = true
+        let urlSession = URLSession(configuration: sessionConfig)
 
-        let index_contents = try url_session.synchronousFetch(url: URL(string: "http://192.168.0.1/data.json")!)
-        let parsed_index = try JSONSerialization.jsonObject(with: index_contents)
-        guard let parsed_dict = parsed_index as? [String: Any],
-              let console_name = parsed_dict["ConsoleName"] as? String,
-              let filenames = parsed_dict["FileNames"] as? [String]
+        let indexContents = try urlSession.synchronousFetch(url: URL(string: "http://192.168.0.1/data.json")!)
+        let parsedIndex = try JSONSerialization.jsonObject(with: indexContents)
+        guard let parsedDict = parsedIndex as? [String: Any],
+              let consoleName = parsedDict["ConsoleName"] as? String,
+              let filenames = parsedDict["FileNames"] as? [String]
         else {
-            throw SwitchImportError.MALFORMED_INDEX_FILE(parsed_index)
+            throw SwitchImportError.malformedIndexFile(parsedIndex)
         }
         for filename in filenames {
             // Sanity check to ensure filenames are reasonable and don't contain e.g. path components
             if filename.range(of: #"^\w[\w.-]+$"#, options: .regularExpression) == nil {
-                throw SwitchImportError.BAD_FILENAME_FROM_SWITCH(filename)
+                throw SwitchImportError.badFilenameFromSwitch(filename)
             }
 
             print("[INFO] Downloading \(filename)...")
             let url = URL(string: "http://192.168.0.1/img/\(filename)")!
-            let data = try url_session.synchronousFetch(url: url)
-            let file_url = URL(fileURLWithPath: output_dir).appendingPathComponent(filename)
-            try data.write(to: file_url)
+            let data = try urlSession.synchronousFetch(url: url)
+            let fileUrl = URL(fileURLWithPath: outputDir).appendingPathComponent(filename)
+            try data.write(to: fileUrl)
         }
-        print("[INFO] Successfully downloaded \(filenames.count) file(s) from \(console_name)")
+        print("[INFO] Successfully downloaded \(filenames.count) file(s) from \(consoleName)")
     } catch {
         print("[ERROR] \(error)")
         return 1
