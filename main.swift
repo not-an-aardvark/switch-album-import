@@ -52,11 +52,9 @@ func main() -> Int32 {
         exit(0)
     }
 
-    let defaults = UserDefaults.standard
-
-    guard let ssid = defaults.string(forKey: "ssid"),
-          let password = defaults.string(forKey: "password"),
-          let outputDir = defaults.string(forKey: "output_dir")
+    guard let ssid = UserDefaults.standard.string(forKey: "ssid"),
+          let password = UserDefaults.standard.string(forKey: "password"),
+          let outputDir = UserDefaults.standard.string(forKey: "output_dir")
     else {
         printUsage()
         return 1
@@ -72,13 +70,11 @@ func main() -> Int32 {
         guard let interface = CWWiFiClient.shared().interface() else {
             throw SwitchImportError.noWifiInterface
         }
-        let matchingNetworks = try interface.scanForNetworks(withName: ssid)
-        if matchingNetworks.count == 0 {
+        guard let switchHotspot = try interface.scanForNetworks(withName: ssid).first else {
             throw SwitchImportError.hotspotNotFound(ssid)
         }
-
         print("[INFO] Connecting to \(ssid)...")
-        try interface.associate(to: matchingNetworks.first!, password: password)
+        try interface.associate(to: switchHotspot, password: password)
         defer {
             // Disconnect from the Switch hotspot.
             // It doesn't seem to be possible to reconnect back to the previous network here. However,
@@ -106,11 +102,11 @@ func main() -> Int32 {
                 throw SwitchImportError.badFilenameFromSwitch(filename)
             }
 
+            let sourceUrl = URL(string: "http://192.168.0.1/img/\(filename)")!
+            let destinationUrl = URL(fileURLWithPath: outputDir).appendingPathComponent(filename)
+
             print("[INFO] Downloading \(filename)...")
-            let url = URL(string: "http://192.168.0.1/img/\(filename)")!
-            let data = try urlSession.synchronousFetch(url: url)
-            let fileUrl = URL(fileURLWithPath: outputDir).appendingPathComponent(filename)
-            try data.write(to: fileUrl)
+            try urlSession.synchronousFetch(url: sourceUrl).write(to: destinationUrl)
         }
         print("[INFO] Successfully downloaded \(filenames.count) file(s) from \(consoleName)")
     } catch {
