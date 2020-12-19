@@ -38,6 +38,14 @@ extension URLSession {
     }
 }
 
+extension FileManager {
+    func directoryExists(atPath: String) -> Bool {
+        var fileIsDirectory: ObjCBool = false
+        return fileExists(atPath: atPath, isDirectory: &fileIsDirectory) &&
+            fileIsDirectory.boolValue
+    }
+}
+
 private func printUsage() {
     print("""
     Usage: switch-album-import -h|-help|--help
@@ -60,8 +68,7 @@ func main() -> Int32 {
         return 1
     }
 
-    var outputDirIsDirectory: ObjCBool = true
-    if !FileManager.default.fileExists(atPath: outputDir, isDirectory: &outputDirIsDirectory) {
+    if !FileManager.default.directoryExists(atPath: outputDir) {
         print("[ERROR] No such directory: \(outputDir)")
         return 1
     }
