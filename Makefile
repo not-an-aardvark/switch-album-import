@@ -14,9 +14,6 @@ install: bin/switch-album-import
 uninstall:
 	rm -f $(DESTDIR)$(bindir)/switch-album-import
 
-link: bin/switch-album-import
-	stow -vt $(DESTDIR)$(bindir) bin
-
 clean:
 	rm -f bin/switch-album-import
 

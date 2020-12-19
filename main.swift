@@ -100,7 +100,6 @@ func main() -> Int32 {
         else {
             throw SwitchImportError.MALFORMED_INDEX_FILE(parsed_index)
         }
-        print("[INFO] Downloading \(filenames.count) file(s) from \(console_name)...")
         for filename in filenames {
             // Sanity check to ensure filenames are reasonable and don't contain e.g. path components
             if filename.range(of: #"^\w[\w.-]+$"#, options: .regularExpression) == nil {
