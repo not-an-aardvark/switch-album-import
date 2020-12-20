@@ -47,6 +47,8 @@ The Switch's export protocol works by setting up a wifi hotspot and serving the 
 
 All of the files specified in `FileNames` are served from the Switch at `http://192.168.0.1/img/<filename>`.
 
+Incidentally, filenames in the Switch album also encode the time that a screenshot was taken, as well as the game that the screenshot is from, as described [here](https://github.com/RenanGreca/Switch-Screenshots/tree/3958bd3a4444fdf84d1f0c544bd2f9cd39dbc60a#about-the-game-ids).
+
 ### Additional protocol quirks
 
 The following is based on observed behavior, with the goal of saving debugging time for anyone else who implements a client.
