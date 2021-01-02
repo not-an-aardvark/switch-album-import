@@ -48,9 +48,34 @@ extension FileManager {
 
 private func printUsage() {
     print("""
-    Usage: switch-album-import -h|-help|--help
+        Usage: switch-album-import -h|-help|--help
            switch-album-import -ssid <ssid> -password <password> -output_dir <dir>
     """)
+}
+
+private func getSessionConfig() -> URLSessionConfiguration {
+    let sessionConfig = URLSessionConfiguration.ephemeral
+
+    // Due to the DHCP lease bug described in the readme, the wifi network will
+    // disconnect once, and then reconnect, during normal operation. As a result,
+    // it's necessary for requests to wait for network connectivity rather than
+    // immediately throwing an error. (It's also necessary for requests to handle
+    // a single connection-lost error, as implemented in `synchronousFetch`, in
+    // case this disconnect happens in the middle of a request.)
+    sessionConfig.waitsForConnectivity = true
+
+    // However, if the network connection was lost for a long time, it's likely that
+    // the user has closed the switch UI, or something else has gone wrong. In this case
+    // it's better to time out after a minute or so rather than leaving the script running
+    // for the default timeout of 7 days.
+    //
+    // `timeoutIntervalForResource` is a timeout for the whole request, so this timeout
+    // could incorrectly halt a download that is just proceeding very slowly. Unfortunately,
+    // there doesn't seem to be a good way to set a timeout specifically for a network connection
+    // (`timeoutIntervalForRequest` only starts counting when a connection has been established).
+    sessionConfig.timeoutIntervalForResource = 60
+
+    return sessionConfig
 }
 
 func main() -> Int32 {
@@ -91,9 +116,7 @@ func main() -> Int32 {
             interface.disassociate()
         }
 
-        let sessionConfig = URLSessionConfiguration.ephemeral
-        sessionConfig.waitsForConnectivity = true
-        let urlSession = URLSession(configuration: sessionConfig)
+        let urlSession = URLSession(configuration: getSessionConfig())
 
         let indexContents = try urlSession.synchronousFetch(url: URL(string: "http://192.168.0.1/data.json")!)
         let parsedIndex = try JSONSerialization.jsonObject(with: indexContents)
