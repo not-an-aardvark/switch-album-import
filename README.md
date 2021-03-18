@@ -1,6 +1,6 @@
 # switch-album-import
 
-This is a tool for importing screenshots and videos from the Nintendo Switch album. It's a command-line client for the "Send to Smartphone" feature introduced in Switch firmware version 11.0.0 (released 2020-11-30). The idea is that a command-line script might be convenient than the recommended UX, which involves scanning two separate QR codes and manually downloading images using a smartphone browser.
+This is a tool for importing screenshots and videos from the Nintendo Switch album. It's a command-line client for the "Send to Smartphone" feature introduced in Switch firmware version 11.0.0 (released 2020-11-30). The idea is that a command-line script might be more convenient than the recommended UX, which involves scanning two separate QR codes and manually downloading images using a smartphone browser.
 
 Currently, only macOS is supported. Since the Switch's export protocol requires connecting to a local wifi hotspot, tools that connect automatically by modifying your wifi settings will inherently be a bit OS-specific.
 
