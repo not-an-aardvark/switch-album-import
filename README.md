@@ -9,7 +9,7 @@ It would also be possible to create a platform-independent tool where the user m
 ## Installation
 
 1. Clone the repository on macOS
-1. Run `make all` to generate a binary in `bin/switch-album-import` (or `make install` to also symlink the binary into `/usr/local/bin/`).
+1. Run `make all` to generate a binary in `bin/switch-album-import` (and optionally `make install` to symlink the binary into `/usr/local/bin/`).
 
 There are probably some build dependencies omitted here. Unfortunately, at this time I'm not familiar enough with Swift builds to determine what those dependencies are, other than "it seems to work out-of-the-box on my laptop" and "maybe try the XCode Command Line tools". Feel free to send a PR updating this section if you figure anything out.
 
@@ -22,7 +22,7 @@ Alternatively, you can try downloading a precompiled binary from the [releases p
 1. The Switch will display a QR code. Ignore it and press the "+" button to open the "Trouble connecting?" menu. It will display an SSID and a password.
 1. Run this tool with `switch-album-import -ssid <the ssid> -password <the password> -output_dir <directory where files should be downloaded>`
 1. The files should appear in the specified folder. You can now exit the Switch UI.
-1. **Recommended:** After running this the first time, go to Network Preferences > Advanced, and uncheck "Auto-join" for the Switch's SSID in the list. This should smooth out the process of reconnecting to your wifi network after running the script, and only needs to be done once for each Switch that you import from. (The tool auto-disconnects from the Switch hotspot before it exits, but this step prevents your computer from automatically reconnecting to the Switch hotspot afterwards, so that it reconnects to your real wifi network instead.)
+1. **Recommended:** After running this the first time, go to Network Preferences > Advanced on the macOS device, and uncheck "Auto-join" for the Switch's SSID in the list. This should smooth out the process of reconnecting to your wifi network after running the script, and only needs to be done once for each Switch that you import from. (The tool auto-disconnects from the Switch hotspot before it exits, but this step prevents your computer from automatically reconnecting to the Switch hotspot afterwards, so that it reconnects to your real wifi network instead.)
 
 ## Protocol
 
