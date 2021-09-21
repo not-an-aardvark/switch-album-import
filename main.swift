@@ -78,6 +78,32 @@ private func getSessionConfig() -> URLSessionConfiguration {
     return sessionConfig
 }
 
+private func tryReconnectToNormalWifiOrLogWarning(interface: CWInterface) {
+    // So this task ("reconnect to the wifi network that the user was connect to before
+    // the script was running") is surprisingly difficult.
+    // * We can record the SSID before we connect to the Switch hotspot, but there's no way
+    //   to access the saved password, or to tell macOS to just use the saved password.
+    // * If we just disconnect from the Switch hotspot and exit the script, macOS Big Sur
+    //   will leave the wifi in a disconnected state. (Previous versions would attempt to
+    //   reconnect to a network according to the user's default settings, but this seems to
+    //   no longer happen.)
+    // * However, if also reboot the wifi interface before exiting, macOS will go through its
+    //   normal process of auto-joining a network.
+    // * macOS might attempt to reconnect to the Switch hotspot, which will typically still
+    //   be active and will be auto-remembered. Users can prevent this from happening by
+    //   configuring the Switch's SSID to *not* auto-join in System Preferences. (If the script
+    //   is running as root, it would also be possible to force-remove the Switch from the
+    //   network list, but this seems like it's not worth the risks of telling people to run
+    //   the script as root.)
+    interface.disassociate()
+    do {
+        try interface.setPower(false)
+        try interface.setPower(true)
+    } catch {
+        print("[WARNING] Failed to reset wifi connection: \(error)")
+    }
+}
+
 func main() -> Int32 {
     let args = Array(CommandLine.arguments.dropFirst())
     if (args.contains { arg in arg == "-h" || arg == "-help" || arg == "--help" }) {
@@ -108,12 +134,7 @@ func main() -> Int32 {
         print("[INFO] Connecting to \(ssid)...")
         try interface.associate(to: switchHotspot, password: password)
         defer {
-            // Disconnect from the Switch hotspot.
-            // It doesn't seem to be possible to reconnect back to the previous network here. However,
-            // the OS should do it automatically since it won't be connected to any networks at this
-            // point. Note that the OS might try to reconnect to the Switch hotspot instead; to prevent
-            // this, the Switch's SSID should be configured to *not* auto-join in System Preferences.
-            interface.disassociate()
+            tryReconnectToNormalWifiOrLogWarning(interface: interface)
         }
 
         let urlSession = URLSession(configuration: getSessionConfig())
