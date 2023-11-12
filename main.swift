@@ -128,6 +128,9 @@ func main() -> Int32 {
         guard let interface = CWWiFiClient.shared().interface() else {
             throw SwitchImportError.noWifiInterface
         }
+        // For baffling reasons, on macOS Sonoma, the first call to `scanForNetworks` returns a `CWNetwork` with .ssid = nil.
+        // The second call returns a `CWNetwork` with the proper SSID that can actually be connected to.
+        try interface.scanForNetworks(withName: ssid)
         guard let switchHotspot = try interface.scanForNetworks(withName: ssid).first else {
             throw SwitchImportError.hotspotNotFound(ssid)
         }
